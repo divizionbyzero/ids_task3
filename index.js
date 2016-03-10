@@ -1,6 +1,86 @@
 (function () {
+
+  navigator.getUserMedia = (navigator.getUserMedia ||
+  navigator.webkitGetUserMedia ||
+  navigator.mozGetUserMedia ||
+  navigator.msGetUserMedia);
+
+  if (navigator.getUserMedia) {
+    navigator.getUserMedia({video: true}, function (stream) {
+
+      var mediaStream = stream;
+      var video = document.querySelector('.camera__video');
+
+      video.src = URL.createObjectURL(mediaStream);
+      setInterval(captureFrame, 40);
+
+    }, function (err) {
+      alert('error');
+    });
+  }
+
+
+  function captureFrame() {
     var video = document.querySelector('.camera__video'),
         canvas = document.querySelector('.camera__canvas');
+    var filterName = document.querySelector('.controls__filter').value;
+
+    var ctx = canvas.getContext('2d');
+
+
+    ctx.drawImage(video,0,0);
+    var imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    var data = imageData.data;
+
+    for (var i = 0; i < data.length; i += 4) {
+      var pixel = [data[i], data[i + 1], data[i + 2]];
+      pixel = applyFilterToPixel(pixel, filterName);
+      data[i] = pixel[0];
+      data[i + 1] = pixel[1];
+      data[i + 2] = pixel[2];
+      delete pixel;
+    }
+    imageData.data = data;
+    //set the data back
+    ctx.putImageData(imageData,0,0);
+    delete imageData;
+  }
+
+  function applyFilterToPixel(pixel, filterName) {
+    var filters = {
+      invert: function (pixel) {
+        pixel[0] = 255 - pixel[0];
+        pixel[1] = 255 - pixel[1];
+        pixel[2] = 255 - pixel[2];
+
+        return pixel;
+      },
+      grayscale: function (pixel) {
+        var r = pixel[0];
+        var g = pixel[1];
+        var b = pixel[2];
+        var v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+        pixel[0] = pixel[1] = pixel[2] = v;
+
+        return pixel;
+      },
+      threshold: function (pixel) {
+        var r = pixel[0];
+        var g = pixel[1];
+        var b = pixel[2];
+        var v = (0.2126 * r + 0.7152 * g + 0.0722 * b >= 128) ? 255 : 0;
+        pixel[0] = pixel[1] = pixel[2] = v;
+
+        return pixel;
+      }
+    };
+
+
+
+    return filters[filterName](pixel);
+  };
+  /*
 
     var getVideoStream = function (callback) {
         navigator.getUserMedia = navigator.getUserMedia ||
@@ -85,5 +165,5 @@
         captureFrame();
 
         setInterval(captureFrame, 16);
-    });
+    });*/
 })();
